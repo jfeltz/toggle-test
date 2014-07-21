@@ -44,7 +44,7 @@
   :prefix "tgt-"
   :link '(emacs-library-link :tag "Lisp File" "toggle-test.el"))
 
-;; A list of projects. Each item in this list is a an alist that specifies,
+;; A list of projects. Each item in this list is an alist that specifies:
 ;; 1. The project root directory
 ;; 2. Source folder(s) (relative to root directory)
 ;; 3. Test source folder(s) (relative to root directory)
@@ -69,9 +69,10 @@ One entry per project that provides naming convention and folder structure"
   :group 'toggle-test
   :type '(repeat (alist)))
 
-;; Indicates if the toggle file should be opened in a new window 
-;; or replace the buffer in current window. The default behavior is to open it in new window
-;; Use (setq tgt-open-in-new-window 'nil) to override default behavior
+;; Indicates if the toggle file should be opened in a new window or
+;; replace the buffer in current window. The default behavior is to
+;; open it in new window Use (setq tgt-open-in-new-window 'nil) to
+;; override default behavior
 
 ;;;###autoload
 (defcustom tgt-open-in-new-window t 
@@ -82,21 +83,48 @@ One entry per project that provides naming convention and folder structure"
 (defun tgt-proj-prop (prop proj) (cdr (assoc prop proj)))
 (defun tgt-root-dir (proj) (file-truename (car (tgt-proj-prop :root-dir proj))))
 
+(defun tgt-is-ancestor-p (dir file)
+  (if
+   (and dir file (> (length file) 0) (> (length dir) 0))
+   (let
+     ; The directory provided isn't assumed to actually be an encoded abs. directory,
+     ; so force it.
+     ((abs-dir-path (file-name-as-directory (expand-file-name dir)))
+      (abs-file-path (expand-file-name file))
+     ) ; Lexically check the parent/child relation.
+     (and (>= (length abs-file-path) (length abs-dir-path))
+          (string= (substring abs-file-path 0 (length abs-dir-path)) abs-dir-path))
+     )
+   'nil ; else dir or file arg can't be determined 
+   )
+  )
+
+; TODO
+; Wouldn't this be more efficient with a take-until like function?
+; Or do the extra folds just get optimized out anyway? My elisp experience
+; is lacking here. -jfeltz
 (defun tgt-relative-file-path (file proj dir-type) 
-  (reduce 
-   (lambda (cur_val dir) 
-     (or cur_val 
-	 (let ((src-dir (file-name-as-directory 
-			 (expand-file-name dir (tgt-root-dir proj))))) 
-	   (if (tgt-is-ancestor-p src-dir file)
-	       (subseq file (length src-dir)))))) 
-   (cdr (assoc dir-type proj))
+  "Selects the first relative path that is the parent of file in a dir-type's associated list"
+  (reduce ; fold f, where f :: current -> next dir -> current
+   (lambda (current dir) 
+     (or current
+         (let*
+           ((abs-path (expand-file-name dir (tgt-root-dir proj)))
+            (abs-dir (file-name-as-directory abs-path))
+           )
+           (if (tgt-is-ancestor-p abs-dir file) (subseq file (length abs-dir)))
+          )
+      )
+     )
+   (cdr (assoc dir-type proj)) ; if head is ":expr", retrieve directory list
    :initial-value 'nil))
 
-;; Given a file return its project 
 (defun tgt-proj-for (file)
-  (tgt-best-project (remove-if-not
-		(lambda (proj) (tgt-is-ancestor-p (tgt-root-dir proj) file)) tgt-projects)))
+  "Given a file, return its project." 
+  (tgt-best-project
+    (remove-if-not
+     (lambda (proj) (tgt-is-ancestor-p (tgt-root-dir proj) file)) tgt-projects)
+    ))
 
 (defun tgt-best-project (projects)
   (if projects 
@@ -115,24 +143,47 @@ One entry per project that provides naming convention and folder structure"
 	(values src-file-rel-path 'nil)
       (values 'nil (tgt-relative-file-path file proj :test-dirs)))))
 
+(defun tgt-project-writer (proj writer file)
+  "Return a writer tuple if the writer is defined."
+  (let ((writerf (assoc writer proj))) (if writerf '(writerf, file)))
+)
 
 (defun tgt-find-match (file) 
-  (let ((proj (tgt-proj-for file)))
-      (cond (proj 
-	   (multiple-value-bind 
-	       (src-file-rel-path test-file-rel-path) 
-	       (tgt-find-project-file-in-dirs file proj)
+  (let ((proj (tgt-proj-for file))) ; retrieve project
+    (cond
+     (proj (multiple-value-bind 
+	     (src-file-rel-path test-file-rel-path)
+	     (tgt-find-project-file-in-dirs file proj)
 	     (cond
-	      (src-file-rel-path (tgt-all-toggle-paths 
-							  src-file-rel-path proj :test-dirs 
-							  #'tgt-possible-test-file-names))
-	      (test-file-rel-path (tgt-all-toggle-paths 
-							   test-file-rel-path proj :src-dirs 
-							   #'tgt-possible-src-file-names))
-	      (t (message "File '%s' in project '%s' is not part src-dirs or test-dirs"
-			  file (tgt-root-dir proj)) 'nil))))
+	       (src-file-rel-path
+           (values
+             (tgt-all-toggle-paths 
+				       src-file-rel-path proj :test-dirs #'tgt-possible-test-file-names
+               )
+             (tgt-project-writer proj :test-writer file) 
+            )
+         )
+	       (test-file-rel-path
+           (values
+             (tgt-all-toggle-paths 
+               test-file-rel-path proj :src-dirs #'tgt-possible-src-file-names
+              )
+             (tgt-project-writer proj :src-writer file)
+            )
+          )
+	        (t (message
+              "File '%s' in project '%s' is not part src-dirs or test-dirs"
+              file (tgt-root-dir proj)
+              )
+            '(nil nil))
+       )
+       )
+    )
 	  (t (message "File '%s' not part of any project. Have you defined a project?" file) 
-		 'nil))))
+       '(nil nil))
+    )
+  )
+)
 
 (defun tgt-best-matches (all-matches)
   (let ((exact-matches (remove-if-not #'file-exists-p all-matches)))
@@ -154,7 +205,6 @@ One entry per project that provides naming convention and folder structure"
   (let ((root (tgt-root-dir proj)))
 	(mapcar (lambda (dir) (expand-file-name rel-dir-path (expand-file-name dir root))) 
 			(tgt-proj-prop dir-type proj))))
-
 
 (defun tgt-remove-file-prefix (prefix file) 
   (if (string-match (concat "^" prefix) file) (replace-match "" t t file) 'nil))
@@ -200,9 +250,8 @@ One entry per project that provides naming convention and folder structure"
 	 
 		 ret-val)) (list file)))
 
-;join 2 lists - to make list of tuples by default. 
-;fn argument can override how 2 elements join
 (defun tgt-cross-join (list1 list2 &optional fn)
+  "Join 2 lists. To make list of tuples by default,fn overrides how 2 elements join"
   (cond ((not list1) list2)
 		((not list2) list1)
 		(t (let ((ret-val '())) 
@@ -211,49 +260,70 @@ One entry per project that provides naming convention and folder structure"
 				(add-to-list 'ret-val (if fn (funcall fn i j) (list i j)))))
 			 ret-val))))
 
-(defun tgt-open-file (file)
-  (tgt-find-file file (if tgt-open-in-new-window #'find-file-other-window #'find-file)))
+(defun tgt-open-file (file writer-tuple)
+  "Dispatch type of find file function on file"
+  (tgt-find-file
+    file
+    (if tgt-open-in-new-window #'find-file-other-window #'find-file)
+    writer-tuple
+    )
+  )
 
-(defun tgt-find-file (file find-file-fn)
+(defun tgt-find-file (file find-file-fn writer-tuple)
+  "Force open the file by path creation if necessary, and run the
+optional writer on its buffer."
   (mkdir (file-name-directory file) t);Ensure parent directory exits
-  (funcall find-file-fn file))
+  (let ((bufobj (funcall find-file-fn file)))
+    (if writer-tuple
+      (let ((f (car writer-tuple)) (other-path (car (cdr writer-tuple))))
+        ; set the buffer for the writer, redundant for file-file, but
+        ; not others 
+        (set-buffer bufobj)
+        (funcall f other-path)
+      )
+    )
+  )
+)
 
-
-(defun tgt-show-matches (matches exact-match-p)
+(defun tgt-show-matches (matches exact-match-p writer-tuple)
   (with-output-to-temp-buffer "*Toggle Test*"  
 	(funcall (if tgt-open-in-new-window 
 				 #'switch-to-buffer-other-window #'switch-to-buffer) "*Toggle Test*")
 	(princ (if exact-match-p 
 			   "Mutiple matching files were found. Choose one to open:\n"
-			 "No matching file found. These are the potentials. Pick one to create:\n"))
+			   "No matching file found. These are the potentials. Pick one to create:\n"))
 	(dolist (file matches)
 	  (princ "* ")
-	  (insert-button file 'action (lambda (btn) 
-									(tgt-find-file 
-									 (button-label btn) #'find-alternate-file)))
+	  (insert-button
+      file    ; button label
+      'action ; 
+      (lambda (btn)
+        (let ((scoped-writer-tup (button-get btn 'tt-writer)))
+          (tgt-find-file (button-label btn) #'find-alternate-file scoped-writer-tup)
+        )
+      )
+      'tt-writer
+      writer-tuple
+    )
 	  (princ "\n"))))
 
-
-(defun tgt-open (files)
+(defun tgt-open (files writer-tuple)
+  "Offer a selection of matches, or open best (only) match."
   (if files
 	  (multiple-value-bind (exact-match-p matches) (tgt-best-matches files)
 		(cond
-		 ((= 1 (length matches)) (tgt-open-file (car matches)))
-		 (t (tgt-show-matches matches exact-match-p))))))
+		 ((= 1 (length matches)) (tgt-open-file (car matches) writer-tuple))
+		 (t (tgt-show-matches matches exact-match-p writer-tuple))))))
 
 ;;;###autoload
 (defun tgt-toggle ()
   (interactive)
-  (if buffer-file-truename  
-; expand ~/ with 
-	  (tgt-open (tgt-find-match (file-truename buffer-file-truename)))))
-
-(defun tgt-is-ancestor-p (dir file)
-  (if (and dir file (> (length file) 0) (> (length dir) 0))
-   (let ((dir-name (file-name-as-directory (expand-file-name dir))) 
-	 (file-name (expand-file-name file)))
-	 (and (>= (length file-name) (length dir-name)) 
-	      (string= (substring file-name 0 (length dir-name)) dir-name))) 'nil))
+  (if buffer-file-truename ; file-truename expands '~/' sub-path etc..
+    (let* ((m (tgt-find-match (file-truename buffer-file-truename))))
+      (apply 'tgt-open m)
+    )
+  )
+)
 
 (provide 'toggle-test)
 

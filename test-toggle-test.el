@@ -1,5 +1,7 @@
 (load-file "toggle-test.el")
 (require 'toggle-test)
+(require 'cl)
+(require 'ert)
 
 (ert-deftest should-find-best-matching-project ()
   "Should handle sub-projects and return subproject for files inside subproject"
@@ -33,7 +35,6 @@
 				 (:test-suffixes "$Spec" "Spec" "Test" "$Test")))
   tgt-projects)
 
-
 (ert-deftest should-identify-relative-file-paths ()
   (multiple-value-bind (scala-proj py-proj) (setup-test-projects)
     (should (string= "Foo.scala" 
@@ -48,8 +49,8 @@
 				   scala-proj :src-dirs)))
     (should (string= "bar/Blah.scala" 
 		     (tgt-relative-file-path 
-		      (file-truename "/tmp/projects/scala-proj/foo-module/src/bar/Blah.scala") 
-		      scala-proj :src-dirs)))
+		      (file-truename "/tmp/projects/scala-proj/foo-module/src/bar/Blah.scala")
+          scala-proj :src-dirs)))
     (should-not (tgt-relative-file-path 
 	     (file-truename "/tmp/projects/scala-proj/play/app1/Blah.scala") 
 	     scala-proj :src-dirs))
@@ -69,13 +70,13 @@
 		      py-proj :test-dirs)))))
 
 (ert-deftest should-indentify-ancestor ()
-(should (tgt-is-ancestor-p "/foo" "/foo/bar"))
-(should-not (tgt-is-ancestor-p "/foo/b" "/foo/bar"))
-(should-not (tgt-is-ancestor-p "" "foobar"))
-(should-not (tgt-is-ancestor-p 'nil "foobar"))
-(should-not  (tgt-is-ancestor-p 'nil 'nil))
-(should-not (tgt-is-ancestor-p "hello" 'nil))
-(should-not  (tgt-is-ancestor-p "foobar" "f0")))
+  (should (tgt-is-ancestor-p "/foo" "/foo/bar"))
+  (should-not (tgt-is-ancestor-p "/foo/b" "/foo/bar"))
+  (should-not (tgt-is-ancestor-p "" "foobar"))
+  (should-not (tgt-is-ancestor-p 'nil "foobar"))
+  (should-not  (tgt-is-ancestor-p 'nil 'nil))
+  (should-not (tgt-is-ancestor-p "hello" 'nil))
+  (should-not  (tgt-is-ancestor-p "foobar" "f0")))
 
 (ert-deftest should-identify-the-project-given-a-file ()
   (setq tgt-projects '())
@@ -181,9 +182,9 @@
 						(:test-dirs "tests") 
 						(:src-dirs "src"))))
   (should (equal '("/projects/tests/blah/bar.py") 
-				 (tgt-find-match "/projects/src/blah/bar.py")))
+				 (car (tgt-find-match "/projects/src/blah/bar.py"))))
   (should (equal '("/projects/src/foo.py") 
-				 (tgt-find-match "/projects/tests/foo.py"))))
+				 (car (tgt-find-match "/projects/tests/foo.py")))))
 
 (ert-deftest should-find-all-matches ()
   "tests the top level matching function"
@@ -191,15 +192,14 @@
 	
 	(let ((msg "")) 
 	  ;Mock message 
-	  (flet ((message (str &rest args) (setq msg (apply 'format (cons str args)))))
-
-	   (should-not (tgt-find-match (file-truename "/not-configured-proj/src/foo.py")))
+	  (cl-flet ((message (str &rest args) (setq msg (apply 'format (cons str args)))))
+	   (should-not (car (tgt-find-match (file-truename "/not-configured-proj/src/foo.py")))))
 	   (should (string= (concat "File '/not-configured-proj/src/foo.py' not part of" 
 						   " any project. Have you defined a project?")
 					  msg))
 	   
-	   (should-not (tgt-find-match
-					(file-truename "/tmp/projects/python-proj/build/foo.py")))
+	   (should-not (car (tgt-find-match
+					(file-truename "/tmp/projects/python-proj/build/foo.py"))))
 	   (should (string= (format 
 					   "File '%s' in project '%s' is not part src-dirs or test-dirs"
 							  (file-truename "/tmp/projects/python-proj/build/foo.py")
@@ -207,11 +207,11 @@
 						msg))))
 
 	(should (equal `(,(file-truename "/tmp/projects/python-proj/src/foo/blah.py"))
-				   (tgt-find-match
-					(file-truename "/tmp/projects/python-proj/tests/foo/test_blah.py"))))
+				   (car (tgt-find-match
+					(file-truename "/tmp/projects/python-proj/tests/foo/test_blah.py")))))
 	(should (equal `(,(file-truename "/tmp/projects/python-proj/tests/test_foo.py"))
-				   (tgt-find-match 
-					(file-truename "/tmp/projects/python-proj/src/foo.py"))))
+				   (car (tgt-find-match 
+					(file-truename "/tmp/projects/python-proj/src/foo.py")))))
 	(should (equal 
 			 (mapcar 
 			  #'file-truename 
@@ -227,7 +227,7 @@
 				"/tmp/projects/scala-proj/integration-specs/foo/bar/BlahTest.scala"
 				"/tmp/projects/scala-proj/integration-specs/foo/bar/BlahSpec.scala"
 				"/tmp/projects/scala-proj/integration-specs/foo/bar/Blah$Spec.scala"))
-			 (tgt-find-match 
+			 (car (tgt-find-match 
 			  (file-truename 
 			   "/tmp/projects/scala-proj/foo-module/src/foo/bar/Blah.scala"))))))
 
@@ -277,6 +277,7 @@
 	(let ((tgt-open-in-new-window 'nil)) 
 	  (tgt-toggle)
 	  (should (equal "*Toggle Test*" (buffer-name)))
+    ; select an option
 	  (click (file-truename (expand-file-name "unit-specs/Foo$Spec.scala" root)))
 	  (should (file-directory-p (expand-file-name "unit-specs/" root)))
 	  (should (equal buffer-file-truename 
@@ -293,7 +294,6 @@
 ;;
 ;;  toggleing from <root>/integration-specs/Blah$Spec.scala should directly take you 
 ;;  src without any prompts
-	
 	(find-file (expand-file-name "src/Blah.scala" root))
 	(let ((tgt-open-in-new-window t)) 
 	  (tgt-toggle)
@@ -307,4 +307,3 @@
 	  (should (equal buffer-file-truename 
 					 (file-truename 
 					  (expand-file-name "src/Blah.scala" root)))))))
-

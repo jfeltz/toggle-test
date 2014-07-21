@@ -1,7 +1,7 @@
 Toggle Test [![Build Status](https://travis-ci.org/rags/toggle-test.png?branch=master)](https://travis-ci.org/rags/toggle-test)
 ===========
 
-Toggle Test allows you to quickly switch between test and test subject. This is a very useful tool to have when you are [TDD](http://en.wikipedia.org/wiki/Test-driven_development)ing.
+Toggle Test allows you to quickly switch between test and test subject. This is a very useful tool to have when you are [TDD](http://en.wikipedia.org/wiki/Test-driven_development)'ing.
 Test Toggle is similar to test toggle functionality provided by IntelliJ and other JetBrains IDEs.
 
 **Features:**
@@ -13,7 +13,6 @@ Test Toggle is similar to test toggle functionality provided by IntelliJ and oth
   (creating it of required).
 * Test Toggle is language/tech stack agnostic. So it can work with your Rails, Python, Clojure or any other project.
 * You can work with multiple such projects at the same time.
-
 
 Installation
 ------------
@@ -68,17 +67,23 @@ This configuration allows Toggle Test to understand the project structure and na
 where each item is a project configuration. Here is how you add to this list.
 
 ```lisp
-  (add-to-list 'tgt-projects '((:root-dir <root directory of project>)
-                              (:src-dirs <list source folders relative to root>) 
-                              (:test-dirs <list of test folders relative to root>)
-                              (:test-prefixes <optional list of prefix strings that are added on source file names 
-                                            to get test file names>)
-                              (:test-suffixes <optional list of suffix strings without the file extension>))) 
+  (add-to-list 'tgt-projects 
+  '((:root-dir <root directory of project>)           
+    (:src-dirs <list source folders relative to root>)                                                        
+    (:test-dirs <list of test folders relative to root>)                                                             
+    (:test-prefixes <optional list of prefix strings that are added on source file names                             
+                  to get test file names>)                                                                           
+    (:test-suffixes <optional list of suffix strings without the file extension>)))                                  
+    (:test-writer '<name of function handling fresh test buffer>)                                                    
+    (:src-writer '<name of function handling fresh source buffer>))
+    )
 ```
 
 Each project that you configure is an alist with *:root-dir, :src-dirs, :test-dirs* as mandatory and 
-*:test-prefixes, :test-suffixes* as optional entries. 
-
+*:test-prefixes, :test-suffixes, 
+[:test-writer](#test-writer and src-writer call-backs),
+[:src-writer](#test-writer and src-writer call-backs)
+* as optional entries. 
 **Assumptions:** Test Toggle makes 2 assumptions about the all projects defined. These are not tricky assumptions. 
 Most projects have folder organization and naming conventions that complement these assumptions
 
@@ -192,6 +197,27 @@ The default value is **t**
 ```lisp
   (setq tgt-open-in-new-window <'nil or t>)
 ```
+<a name="test-writer and src-writer call-backs"/>
+### test-writer and src-writer call-backs
+
+*test-writer* and *src-writer* options allow one to bind source/test
+origin information to a called buffer writer function, i.e. the src file path
+to a test buffer writer, or the test path to a source path buffer
+writer respectively.  To see how this is used, here is an example for
+Haskell Source and Haskell Test:
+
+```lisp 
+ (defun to-test-module-path (haskell-file) .... )
+
+ (defun to-haskell-test-buffer (src-path)
+   (insert 
+     "module " (to-test-path test-path) "where\n"
+       ; the Haskell module header, analogous to Java class name
+     "import " (to-module-path src-path)
+       ; import the source, in Haskell this is analgous to C's #include ..
+   )
+ )
+```
 
 Contributing
 --------------------------
@@ -201,9 +227,12 @@ Toggle Test uses [ert](http://www.gnu.org/software/emacs/manual/html_mono/ert.ht
 Keep them green and test your changes.
 * You can also contribute by reporting any bugs or feature requests in the [issues section](https://github.com/rags/toggle-test/issues)
 
+Notable Contributors
+--------------------------
+[John P. Feltz](http://www.github.com/jfeltz)
+
 License
 --------
 [GNU General Public License](http://www.gnu.org/licenses/)
 
 Copyright (C) 2014 [Raghunandan Rao](mailto:r.raghunandan@gmail.com)
-
