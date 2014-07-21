@@ -74,8 +74,8 @@ where each item is a project configuration. Here is how you add to this list.
     (:test-prefixes <optional list of prefix strings that are added on source file names                             
                   to get test file names>)                                                                           
     (:test-suffixes <optional list of suffix strings without the file extension>)))                                  
-    (:test-writer '<name of function handling fresh test buffer>)                                                    
-    (:src-writer '<name of function handling fresh source buffer>))
+    (:test-writer <name of function handling fresh test buffer>)                                                    
+    (:src-writer <name of function handling fresh source buffer>))
     )
 ```
 
@@ -203,17 +203,17 @@ The default value is **t**
 *test-writer* and *src-writer* options allow one to bind source/test
 origin information to a called buffer writer function, i.e. the src file path
 to a test buffer writer, or the test path to a source path buffer
-writer respectively.  To see how this is used, here is an example for
+writer, respectively.  To see how this is used, here is an example for
 Haskell Source and Haskell Test:
 
 ```lisp 
- (defun to-test-module-path (haskell-file) .... )
+ (defun to-source-module-path (haskell-file) .... )
 
  (defun to-haskell-test-buffer (src-path)
    (insert 
-     "module " (to-test-path test-path) "where\n"
+     "module " (to-test-module-path) "where\n"
        ; the Haskell module header, analogous to Java class name
-     "import " (to-module-path src-path)
+     "import " (to-source-module-path src-path)
        ; import the source, in Haskell this is analgous to C's #include ..
    )
  )
