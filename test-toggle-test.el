@@ -1,7 +1,14 @@
+; A warning to future readers- they might want to lower their
+; expectations before encountering this file. It's common practice for
+; tests to be poorly written, but this takes that to the extreme. It's
+; a horrible one-off. Duplication should be reduced, and be broken up
+; with 1-2 (at most) predicate per test + fixture, inorder to better
+; isolate problems. Someone is goint to eat that sandwich at some
+; point, but it isn't going to happen now. -jfeltz
+
 (load-file "toggle-test.el")
 (require 'toggle-test)
 (require 'cl)
-(require 'ert)
 
 (ert-deftest should-find-best-matching-project ()
   "Should handle sub-projects and return subproject for files inside subproject"
@@ -84,7 +91,6 @@
   (add-to-list 'tgt-projects '((:root-dir "/foo/bar/baz/")))
   (add-to-list 'tgt-projects '((:root-dir "/blah/bar//..")))
   (add-to-list 'tgt-projects '((:root-dir "c:/foo")))
-  (should (equal '((:root-dir "c:/foo")) (tgt-proj-for "c:/foo/blah/bar.el")))
   (should (equal '((:root-dir "/foo/blah-3.3")) (tgt-proj-for "/foo/blah-3.3/bar.el")))
   (should (equal '((:root-dir "/foo/blah-3.3")) (tgt-proj-for "/foo/blah-3.3/baz/bar.el")))
   (should-not  (tgt-proj-for "/foo/blah.el"))
@@ -92,10 +98,13 @@
   (should (equal '((:root-dir "/foo/bar/baz/")) (tgt-proj-for "/foo/bar/baz/foo/bar")))
   (should (equal '((:root-dir "/blah/bar//..")) (tgt-proj-for "/blah/bar/loo")))
   (should (equal '((:root-dir "/blah/bar//..")) (tgt-proj-for "/blah/bar.el")))
-  ;this is not the right behaviour. not worth fix ing it
+  ;this is not the right behaviour. not worth fixing it
   (should (equal '((:root-dir "/blah/bar//..")) (tgt-proj-for "/blah/"))) 
   (should-not  (tgt-proj-for "/blah"))
-  (should-not  (tgt-proj-for "/blah.el")))
+  (should-not  (tgt-proj-for "/blah.el"))
+  ; FIXME Windows paths aren't supported? 
+  (should (equal '((:root-dir "c:/foo")) (tgt-proj-for "c:/foo/blah/bar.el")))
+)
 
 (ert-deftest should-cross-join-lists ()
   (should (equal '((3 c) (3 b) (3 a) 
@@ -189,17 +198,20 @@
 (ert-deftest should-find-all-matches ()
   "tests the top level matching function"
   (multiple-value-bind (scala-proj py-proj) (setup-test-projects) 
-	
 	(let ((msg "")) 
 	  ;Mock message 
-	  (cl-flet ((message (str &rest args) (setq msg (apply 'format (cons str args)))))
-	   (should-not (car (tgt-find-match (file-truename "/not-configured-proj/src/foo.py")))))
+    ; FIXME I'm not really sure why cl-flet doesn't work here. -jfeltz
+	  (flet ((message (str &rest args) (setq msg (apply 'format (cons str args)))))
+	   (should-not (car (tgt-find-match (file-truename "/not-configured-proj/src/foo.py"))))
 	   (should (string= (concat "File '/not-configured-proj/src/foo.py' not part of" 
 						   " any project. Have you defined a project?")
 					  msg))
-	   
+	    
+     ; test nil target location
 	   (should-not (car (tgt-find-match
 					(file-truename "/tmp/projects/python-proj/build/foo.py"))))
+     ; test message for reason (file not in test or src dirs) 
+     ; FIXME prints that it can't find file in project 
 	   (should (string= (format 
 					   "File '%s' in project '%s' is not part src-dirs or test-dirs"
 							  (file-truename "/tmp/projects/python-proj/build/foo.py")
@@ -229,7 +241,7 @@
 				"/tmp/projects/scala-proj/integration-specs/foo/bar/Blah$Spec.scala"))
 			 (car (tgt-find-match 
 			  (file-truename 
-			   "/tmp/projects/scala-proj/foo-module/src/foo/bar/Blah.scala"))))))
+			   "/tmp/projects/scala-proj/foo-module/src/foo/bar/Blah.scala")))))))
 
 (ert-deftest should-filter-existing-files ()  
   (should (equal `(,'nil ,'nil) (tgt-best-matches 'nil)))

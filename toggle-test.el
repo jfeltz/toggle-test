@@ -175,7 +175,8 @@ One entry per project that provides naming convention and folder structure"
               "File '%s' in project '%s' is not part src-dirs or test-dirs"
               file (tgt-root-dir proj)
               )
-            '(nil nil))
+             '(nil nil)
+          )
        )
        )
     )
