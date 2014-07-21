@@ -217,6 +217,12 @@ Haskell Source and Haskell Test:
        ; import the source, in Haskell this is analgous to C's #include ..
    )
  )
+
+ (add-to-list 'tgt-projects 
+   .....
+   (:test-writer 'to-haskell-test-buffer)                                                    
+   .....
+   )
 ```
 
 Contributing
