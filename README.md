@@ -203,8 +203,8 @@ The default value is **t**
 *test-writer* and *src-writer* options allow one to bind source/test
 origin information to a called buffer writer function, i.e. the src file path
 to a test buffer writer, or the test path to a source path buffer
-writer, respectively.  To see how this is used, here is an example for
-Haskell Source and Haskell Test:
+writer, respectively.  To see how this is used, here is an example for a
+Haskell Test File:
 
 ```lisp 
  (defun to-source-module-path (haskell-file) .... )
@@ -214,7 +214,7 @@ Haskell Source and Haskell Test:
      "module " (to-test-module-path) "where\n"
        ; the Haskell module header, analogous to Java class name
      "import " (to-source-module-path src-path)
-       ; import the source, in Haskell this is analgous to C's #include ..
+       ; import the source, in Haskell this is analogous to C's #include ..
    )
  )
 

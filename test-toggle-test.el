@@ -1,14 +1,13 @@
-; A warning to future readers- they might want to lower their
-; expectations before encountering this file. It's common practice for
-; tests to be poorly written, but this takes that to the extreme. It's
-; a horrible one-off. Duplication should be reduced, and be broken up
-; with 1-2 (at most) predicate per test + fixture, inorder to better
-; isolate problems. Someone is goint to eat that sandwich at some
-; point, but it isn't going to happen now. -jfeltz
+; A warning to future readers: You might want to lower your expectations before
+; encountering this file. In OSS it's not uncommon for tests to be effective
+; but poorly written, and this takes that to the extreme. It's a horrible
+; one-off.  Duplication should be reduced, deftest's should be broken up with
+; 1-2 (at most) predicates, and fixtures are needed. That would make
+; isolating problems faster, and far easier to understand for contributors.
+; However, I am out of energy for this task. -jfeltz (TODO) 
 
 (load-file "toggle-test.el")
 (require 'toggle-test)
-(require 'cl)
 
 (ert-deftest should-find-best-matching-project ()
   "Should handle sub-projects and return subproject for files inside subproject"

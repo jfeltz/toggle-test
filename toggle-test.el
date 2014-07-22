@@ -4,7 +4,7 @@
 
 ;; Author: Raghunandan Rao <r.raghunandan@gmail.com>
 ;; Keywords: tdd test toggle productivity
-;; Version: 1.0.1
+;; Version: 1.0.2
 ;; Url: https://github.com/rags/toggle-test
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -27,12 +27,13 @@
 ;; integration and unit test for the same source file). It creates the file 
 ;; (test or source), along with the entire directory hierarchy if the file does
 ;; not exist. 
-;; It is language agnostic so you can use it on your rails, django, scala, node.js 
-;; or any other projects.
+;; It is language agnostic so you can use it on your rails, django,
+;; haskell, scala, node.js or any other project.
 
 ;;; Change log:
 ;; - 1.0 - Initial release
 ;; - 1.0.1 - autoloads added
+;; - 1.0.2 - buffer writers added
 
 ;;; Code:
 
@@ -143,10 +144,14 @@ One entry per project that provides naming convention and folder structure"
 	(values src-file-rel-path 'nil)
       (values 'nil (tgt-relative-file-path file proj :test-dirs)))))
 
-(defun tgt-project-writer (proj writer file)
+(defun tgt-proj-writer (proj writert path-context)
   "Return a writer tuple if the writer is defined."
-  (let ((writerf (assoc writer proj))) (if writerf '(writerf, file)))
-)
+  (if
+    (tgt-proj-prop writert proj)
+    ; My elisp-naive way of getting the function object -jfeltz
+    (values (eval (car (tgt-proj-prop writert proj))) path-context)
+    )
+  )
 
 (defun tgt-find-match (file) 
   (let ((proj (tgt-proj-for file))) ; retrieve project
@@ -160,7 +165,7 @@ One entry per project that provides naming convention and folder structure"
              (tgt-all-toggle-paths 
 				       src-file-rel-path proj :test-dirs #'tgt-possible-test-file-names
                )
-             (tgt-project-writer proj :test-writer file) 
+             (tgt-proj-writer proj :test-writer file) 
             )
          )
 	       (test-file-rel-path
@@ -168,7 +173,7 @@ One entry per project that provides naming convention and folder structure"
              (tgt-all-toggle-paths 
                test-file-rel-path proj :src-dirs #'tgt-possible-src-file-names
               )
-             (tgt-project-writer proj :src-writer file)
+             (tgt-proj-writer proj :src-writer file)
             )
           )
 	        (t (message
@@ -277,7 +282,7 @@ optional writer on its buffer."
   (let ((bufobj (funcall find-file-fn file)))
     (if writer-tuple
       (let ((f (car writer-tuple)) (other-path (car (cdr writer-tuple))))
-        ; set the buffer for the writer, redundant for file-file, but
+        ; set the buffer for the writer, this is redundant for find-file, but
         ; not others 
         (set-buffer bufobj)
         (funcall f other-path)
@@ -297,7 +302,7 @@ optional writer on its buffer."
 	  (princ "* ")
 	  (insert-button
       file    ; button label
-      'action ; 
+      'action
       (lambda (btn)
         (let ((scoped-writer-tup (button-get btn 'tt-writer)))
           (tgt-find-file (button-label btn) #'find-alternate-file scoped-writer-tup)
