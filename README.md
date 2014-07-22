@@ -74,8 +74,8 @@ where each item is a project configuration. Here is how you add to this list.
     (:test-prefixes <optional list of prefix strings that are added on source file names                             
                   to get test file names>)                                                                           
     (:test-suffixes <optional list of suffix strings without the file extension>)))                                  
-    (:test-writer <name of function handling fresh test buffer>)                                                    
-    (:src-writer <name of function handling fresh source buffer>))
+    (:test-writer '<name of function handling fresh test buffer>)                                                    
+    (:src-writer '<name of function handling fresh source buffer>))
     )
 ```
 

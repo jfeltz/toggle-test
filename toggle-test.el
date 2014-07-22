@@ -275,14 +275,22 @@ One entry per project that provides naming convention and folder structure"
     )
   )
 
+(defun tgt-writable-p (file)
+  "Predicate to check whether a writer should be used on the file buffer."
+  (not (or (file-exists-p file) (get-file-buffer file)))
+)
+
 (defun tgt-find-file (file find-file-fn writer-tuple)
   "Force open the file by path creation if necessary, and run the
 optional writer on its buffer."
-  (mkdir (file-name-directory file) t);Ensure parent directory exits
-  (let ((bufobj (funcall find-file-fn file)))
-    (if writer-tuple
+  (mkdir (file-name-directory file) t) ;Ensure parent directory exists.
+  (let*
+    ((writable (and (tgt-writable-p file) writer-tuple))
+      (bufobj (funcall find-file-fn file))
+    )
+    (if writable 
       (let ((f (car writer-tuple)) (other-path (car (cdr writer-tuple))))
-        ; set the buffer for the writer, this is redundant for find-file, but
+        ; Set the buffer for the writer. This is redundant for find-file, but
         ; not others 
         (set-buffer bufobj)
         (funcall f other-path)
