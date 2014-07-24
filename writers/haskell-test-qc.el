@@ -27,14 +27,10 @@
     "{-# LANGUAGE TemplateHaskell #-}\n\n"
     "module " (to-haskell-module-name buffer-file-name) " where\n"
     "import " (to-haskell-module-name src-path) " -- test subjects\n"
-    "import QuickCheck\n"
     "import Test.QuickCheck\n"
-    "import Test.QuickCheck.Property.Monad\n\n"
-    "main :: IO ()\n"
+    "main :: IO Bool\n"
     "main = $quickCheckAll\n"
-  )
-  (goto-char (point-min))
-  (forward-char 5)
+    )
   )
 
 (provide 'haskell-test-qc)
