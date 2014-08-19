@@ -1,11 +1,3 @@
-; A warning to future readers: You might want to lower your expectations before
-; encountering this file. In OSS it's not uncommon for tests to be effective
-; but poorly written, and this takes that to the extreme. It's a horrible
-; one-off.  Duplication should be reduced, deftest's should be broken up with
-; 1-2 (at most) predicates, and fixtures are needed. That would make
-; isolating problems faster, and far easier to understand for contributors.
-; However, I am out of energy for this task. -jfeltz (TODO) 
-
 (load-file "toggle-test.el")
 (require 'toggle-test)
 
@@ -318,3 +310,60 @@
 	  (should (equal buffer-file-truename 
 					 (file-truename 
 					  (expand-file-name "src/Blah.scala" root)))))))
+
+
+(defun buf-post-conditions (a b)
+  "return whether or not the buffer matches desired args and the expected modified state"
+  (let* ((expected (concat a b))
+         (present (buffer-substring 1 (+ (length expected) 1))))
+    (message (format "present %s" present)) 
+    (and (buffer-modified-p) (equal present expected))
+    ))
+
+(defun write (a b) (insert a) (insert b))
+(defun example-src-writer (test source) (write test source))
+(defun example-tst-writer (source test) (write source test))
+
+(ert-deftest test-write ()
+  (let*
+    ((root (make-temp-file "writer-project" t))
+     (source (expand-file-name "src/Bar.scala" root))
+     (source-target (expand-file-name "tests/BarTest.scala" root))
+     (test (expand-file-name "tests/FooTest.scala" root))
+     (test-target (expand-file-name "src/Foo.scala" root))
+     )
+
+	(setq tgt-projects 'nil)
+	(add-to-list 'tgt-projects 
+				 `((:root-dir, root) 
+				   (:src-dirs "src") 
+				   (:test-dirs "tests" ) 
+				   (:test-suffixes "Test")
+           (:test-writer 'example-tst-writer)
+           (:src-writer 'example-src-writer)))
+	
+	(mkdir (expand-file-name "src" root) t)
+
+  ;; starting from non-test
+	(find-file source)
+	(tgt-toggle)
+  (should (buf-post-conditions source source-target))
+
+  ;; starting from test
+	(find-file test)
+	(tgt-toggle)
+  (should (buf-post-conditions test test-target ))
+
+  ;; no write should occur if the buffer is already open
+	(find-file source)
+	(tgt-toggle)
+  (should (buf-post-conditions source source-target))
+  (should (equal (buffer-string) (concat source source-target)))
+
+  ;; no write should occur if the buffer is non-empty
+  (save-buffer) ; save the source-test (non-empty)
+  (kill-buffer nil) ; kill the buffer
+  (find-file source) ; switch to source
+	(tgt-toggle)
+  (should (equal (buffer-string) (concat source source-target)))
+  ))

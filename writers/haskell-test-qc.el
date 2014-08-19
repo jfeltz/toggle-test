@@ -21,7 +21,7 @@
 ;;; Code:
 (require 'haskell-source)
 
-(defun haskell-test-qc (src-path)
+(defun haskell-test-qc (src-path &optional test-path)
   "A test writer for a Haskell QuickCheck test module."
   (insert 
     "{-# LANGUAGE TemplateHaskell #-}\n\n"

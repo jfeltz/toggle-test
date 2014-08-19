@@ -39,7 +39,7 @@
    (mapconcat 'identity (reverse (to-reversed-components p)) ".")
   )
 
-(defun haskell-source (&optional testpath)
+(defun haskell-source (&optional testpath srcpath)
   (insert 
     "-- | \n"
     "-- \n"

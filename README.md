@@ -83,7 +83,8 @@ Each project that you configure is an alist with *:root-dir, :src-dirs, :test-di
 *:test-prefixes, :test-suffixes, 
 [:test-writer](#test-writer and src-writer call-backs),
 [:src-writer](#test-writer and src-writer call-backs)
-* as optional entries. 
+as optional entries. 
+
 **Assumptions:** Test Toggle makes 2 assumptions about the all projects defined. These are not tricky assumptions. 
 Most projects have folder organization and naming conventions that complement these assumptions
 
@@ -233,9 +234,9 @@ Toggle Test uses [ert](http://www.gnu.org/software/emacs/manual/html_mono/ert.ht
 Keep them green and test your changes.
 * You can also contribute by reporting any bugs or feature requests in the [issues section](https://github.com/rags/toggle-test/issues)
 
-Notable Contributors
---------------------------
-[John P. Feltz](http://www.github.com/jfeltz)
+Contributors
+------------
+[John P. Feltz] (http://www.github.com/jfeltz
 
 License
 --------

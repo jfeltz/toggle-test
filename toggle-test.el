@@ -293,7 +293,7 @@ optional writer on its buffer."
         ; Set the buffer for the writer. This is redundant for find-file, but
         ; not others 
         (set-buffer bufobj)
-        (funcall f other-path)
+        (funcall f other-path file)
       )
     )
   )
@@ -308,6 +308,9 @@ optional writer on its buffer."
 			   "No matching file found. These are the potentials. Pick one to create:\n"))
 	(dolist (file matches)
 	  (princ "* ")
+    ;; On first appearance this probably doesn't make much sense at all.
+    ;; I'm basically abusing the button data-structure to carry the information for the
+    ;; writer tuple - jfeltz.
 	  (insert-button
       file    ; button label
       'action
@@ -334,9 +337,7 @@ optional writer on its buffer."
   (interactive)
   (if buffer-file-truename ; file-truename expands '~/' sub-path etc..
     (let* ((m (tgt-find-match (file-truename buffer-file-truename))))
-      (apply 'tgt-open m)
-    )
-  )
+      (apply 'tgt-open m)))
 )
 
 (provide 'toggle-test)
